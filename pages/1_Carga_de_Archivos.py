@@ -10,20 +10,25 @@ supabase: Client = create_client(url, key)
 
 st.set_page_config(page_title="Carga de Archivos", page_icon="📤")
 
-# --- Verificar autenticación segura ---
 # Verificar autenticación segura
 user = st.session_state.get("user", None)
 
 if not user:
     st.warning("🔒 Por favor inicia sesión desde la página de inicio para continuar.")
-
     if st.button("⬅️ Ir a Inicio"):
         st.session_state["user"] = None
         st.success("Redirigiendo a la página de inicio...")
         st.stop()
 
 # Usuario autenticado
-user_email = user.email  # <-- acceso correcto
+if hasattr(user, "email"):
+    user_email = user.email
+elif isinstance(user, dict):
+    user_email = user.get("email")
+else:
+    st.error("❌ No se pudo obtener el email del usuario.")
+    st.stop()
+
 st.info(f"Usuario autenticado: {user_email}")
 
 st.title("📤 Carga de Archivos de Balanzas")
