@@ -35,10 +35,8 @@ def login(email, password):
 # --- Función de logout ---
 def logout():
     st.session_state["user"] = None
-    st.session_state["access_token"] = None
     supabase.auth.sign_out()
     st.success("Sesión cerrada correctamente.")
-    st.experimental_rerun()  # recarga la página para mostrar login
 
 # --- Si el usuario no está autenticado ---
 if not st.session_state["user"]:
