@@ -15,10 +15,14 @@ user = st.session_state.get("user", None)
 
 if not user:
     st.warning("🔒 Por favor inicia sesión desde la página de inicio para continuar.")
+    
     if st.button("⬅️ Ir a Inicio"):
         st.session_state["user"] = None
-        st.success("Redirigiendo a la página de inicio...")
-        st.stop()
+        import streamlit as st
+        st.switch_page("Inicio")  # nombre exacto de tu archivo Inicio.py sin .py
+
+
+
 
 # Usuario autenticado
 if hasattr(user, "email"):
