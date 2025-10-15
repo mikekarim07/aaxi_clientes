@@ -14,6 +14,8 @@ supabase: Client = create_client(url, key)
 # --- Manejo de sesión ---
 if "user" not in st.session_state:
     st.session_state["user"] = None
+if "access_token" not in st.session_state:
+    st.session_state["access_token"] = None
 
 # --- Función de login segura ---
 def login(email, password):
@@ -35,8 +37,10 @@ def login(email, password):
 # --- Función de logout ---
 def logout():
     st.session_state["user"] = None
+    st.session_state["access_token"] = None
     supabase.auth.sign_out()
     st.success("Sesión cerrada correctamente.")
+    # No necesitamos recargar la página; el formulario de login aparecerá automáticamente
 
 # --- Si el usuario no está autenticado ---
 if not st.session_state["user"]:
@@ -49,8 +53,8 @@ if not st.session_state["user"]:
 
         if submitted:
             if login(email, password):
-                st.success("Inicio de sesión exitoso. Redirigiendo...")
-                st.experimental_rerun()  # recarga la página con usuario autenticado
+                st.success("Inicio de sesión exitoso. Ahora puedes continuar con la carga de archivos.")
+                # No usamos st.experimental_rerun()
 
 # --- Usuario autenticado ---
 else:
