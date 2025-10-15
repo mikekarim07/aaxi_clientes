@@ -40,7 +40,7 @@ def logout():
     st.session_state["access_token"] = None
     supabase.auth.sign_out()
     st.success("Sesión cerrada correctamente.")
-    st.experimental_rerun()  # recarga la página para mostrar login
+    # La página se mostrará automáticamente con el formulario de login
 
 # --- Si el usuario no está autenticado ---
 if not st.session_state["user"]:
@@ -53,8 +53,7 @@ if not st.session_state["user"]:
 
         if submitted:
             if login(email, password):
-                st.success("Inicio de sesión exitoso. Puedes continuar con la carga de archivos.")
-                st.experimental_rerun()  # recarga para mostrar contenido de la página
+                st.success("Inicio de sesión exitoso. Ahora puedes continuar con la carga de archivos.")
 else:
     # --- Usuario autenticado ---
     user = st.session_state["user"]
