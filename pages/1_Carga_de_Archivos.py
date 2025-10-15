@@ -11,7 +11,7 @@ url = st.secrets["url"]
 key = st.secrets["key"]
 supabase: Client = create_client(url, key)
 
-# --- Inicializar flag para volver al inicio ---
+# --- Inicializar flags en session_state ---
 if "go_to_inicio" not in st.session_state:
     st.session_state["go_to_inicio"] = False
 
@@ -28,8 +28,14 @@ if not user:
 
     if st.button("⬅️ Ir a Inicio"):
         st.session_state["user"] = None
-        st.session_state["go_to_inicio"] = True  # activa flag para volver al inicio
+        st.session_state["go_to_inicio"] = True
     st.stop()
+
+# --- Botón Cerrar sesión ---
+if st.button("🔒 Cerrar sesión"):
+    st.session_state["user"] = None
+    st.session_state["go_to_inicio"] = True
+    st.stop()  # Detiene ejecución para que Inicio.py se muestre
 
 # --- Obtener email del usuario ---
 if hasattr(user, "email"):
