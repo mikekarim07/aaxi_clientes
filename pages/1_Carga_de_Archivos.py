@@ -78,8 +78,7 @@ else:
         try:
             df = pd.read_csv(uploaded_file)
             expected_columns = [
-                "CompanyCode", "Mes", "Año", "NumeroCuenta", "Descripcion",
-                "SaldoInicial", "Cargo", "Abono", "SaldoFinal", "FechaData"
+                "CompanyCode", "RazonSocial", "NumeroCuenta", "Descripcion", "SaldoInicial", "Cargo", "Abono", "SaldoFinal"
             ]
 
             if not all(col in df.columns for col in expected_columns):
