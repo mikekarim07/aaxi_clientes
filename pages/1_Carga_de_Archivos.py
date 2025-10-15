@@ -11,11 +11,9 @@ url = st.secrets["url"]
 key = st.secrets["key"]
 supabase: Client = create_client(url, key)
 
-# --- Inicializar sesión ---
+# --- Manejo de sesión ---
 if "user" not in st.session_state:
     st.session_state["user"] = None
-if "access_token" not in st.session_state:
-    st.session_state["access_token"] = None
 
 # --- Función de login segura ---
 def login(email, password):
@@ -40,7 +38,7 @@ def logout():
     st.session_state["access_token"] = None
     supabase.auth.sign_out()
     st.success("Sesión cerrada correctamente.")
-    # La página se mostrará automáticamente con el formulario de login
+    st.experimental_rerun()  # recarga la página para mostrar login
 
 # --- Si el usuario no está autenticado ---
 if not st.session_state["user"]:
@@ -53,14 +51,16 @@ if not st.session_state["user"]:
 
         if submitted:
             if login(email, password):
-                st.success("Inicio de sesión exitoso. Ahora puedes continuar con la carga de archivos.")
+                st.success("Inicio de sesión exitoso. Redirigiendo...")
+                st.experimental_rerun()  # recarga la página con usuario autenticado
+
+# --- Usuario autenticado ---
 else:
-    # --- Usuario autenticado ---
     user = st.session_state["user"]
     st.success(f"Sesión iniciada como: {user.email}")
 
-    # Botón de cerrar sesión
-    st.sidebar.button("🔒 Cerrar sesión", on_click=logout)
+    # Botón Cerrar sesión en sidebar
+    st.sidebar.button("Cerrar sesión", on_click=logout)
 
     # --- Interfaz de carga ---
     st.title("📤 Carga de Archivos de Balanzas")
@@ -74,31 +74,26 @@ else:
 
     if uploaded_file is not None:
         try:
-            # Leer CSV
             df = pd.read_csv(uploaded_file)
             expected_columns = [
                 "CompanyCode", "Mes", "Año", "NumeroCuenta", "Descripcion",
                 "SaldoInicial", "Cargo", "Abono", "SaldoFinal", "FechaData"
             ]
 
-            # Validar columnas
             if not all(col in df.columns for col in expected_columns):
                 st.error("❌ El archivo no tiene las columnas esperadas.")
             else:
                 st.success("✅ Estructura del archivo verificada correctamente.")
                 st.dataframe(df.head())
 
-                # Botón para guardar archivo
                 if st.button("Guardar archivo en Supabase"):
                     file_bytes = uploaded_file.getvalue()
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                     file_name = f"{user.email}_{timestamp}.csv"
                     storage_path = f"{año}/{file_name}"
 
-                    # Subir al bucket 'balanzas'
                     upload_res = supabase.storage.from_("balanzas").upload(storage_path, file_bytes, {"content-type": "text/csv"})
                     if upload_res:
-                        # Insertar metadata
                         fecha_data = df["FechaData"].max()
                         supabase.table("balanzas_metadata").insert({
                             "cliente_email": user.email,
@@ -109,7 +104,6 @@ else:
                             "storage_path": storage_path,
                             "activo": True
                         }).execute()
-
                         st.success("🎉 Archivo cargado y metadata registrada exitosamente.")
                         st.info(f"Ruta del archivo en Supabase: `{storage_path}`")
                     else:
