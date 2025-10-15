@@ -1,10 +1,8 @@
 import streamlit as st
 from supabase import create_client, Client
-import pandas as pd
-from datetime import datetime
 
-# --- Configuración inicial ---
-st.set_page_config(page_title="Carga de Balanzas", page_icon="📊")
+# --- Configuración base ---
+st.set_page_config(page_title="Inicio - Ajuste Anual por Inflación", page_icon="📊")
 
 url = st.secrets["url"]
 key = st.secrets["key"]
@@ -14,80 +12,55 @@ supabase: Client = create_client(url, key)
 if "user" not in st.session_state:
     st.session_state["user"] = None
 
-# --- Función para iniciar sesión ---
+# --- Función de login segura ---
 def login(email, password):
     try:
         result = supabase.auth.sign_in_with_password({"email": email, "password": password})
+        if result.user is None:
+            st.error("Error al iniciar sesión. Verifica tus credenciales.")
+            return False
         st.session_state["user"] = result.user
         st.session_state["access_token"] = result.session.access_token
         return True
     except Exception as e:
-        st.error("Error al iniciar sesión. Verifica tus credenciales.")
-        st.write(e)
+        if "Invalid login credentials" in str(e):
+            st.error("Error al iniciar sesión. Verifica tus credenciales.")
+        else:
+            st.error("Ocurrió un error inesperado al iniciar sesión.")
         return False
 
-# --- Función para cerrar sesión ---
+# --- Función de logout ---
 def logout():
     st.session_state["user"] = None
     supabase.auth.sign_out()
     st.success("Sesión cerrada correctamente.")
 
-# --- Si no hay usuario autenticado, mostrar login ---
+# --- Interfaz ---
+st.title("📊 Ajuste Anual por Inflación")
+st.markdown("""
+Bienvenido al sistema de cálculo del **Ajuste Anual por Inflación**.
+
+Esta plataforma te permitirá:
+- Subir las **balanzas de comprobación** de tus entidades legales.
+- Visualizar los periodos cargados.
+- Generar y consultar los resultados del cálculo de AAxI.
+
+""")
+
+# --- Si el usuario no está autenticado ---
 if not st.session_state["user"]:
-    st.title("🔐 Iniciar sesión")
-    email = st.text_input("Correo electrónico")
-    password = st.text_input("Contraseña", type="password")
+    st.subheader("🔐 Inicia sesión para continuar")
 
-    if st.button("Iniciar sesión"):
-        if login(email, password):
-            st.rerun()
+    with st.form("login_form"):
+        email = st.text_input("Correo electrónico")
+        password = st.text_input("Contraseña", type="password")
+        submitted = st.form_submit_button("Iniciar sesión")
+
+        if submitted:
+            if login(email, password):
+                st.success("Inicio de sesión exitoso. Redirigiendo...")
+                st.rerun()
 else:
-    # --- Usuario autenticado ---
     user = st.session_state["user"]
-    st.sidebar.success(f"Usuario: {user.email}")
-
-    # --- Botón de logout ---
-    if st.sidebar.button("Cerrar sesión"):
-        logout()
-        st.rerun()
-
-    # --- Obtener metadatos del usuario (cliente_id, rol, etc.) ---
-    user_metadata = user.user_metadata
-    cliente_id = user_metadata.get("cliente_id")
-    rol = user_metadata.get("rol", "usuario")
-
-    st.title("📊 Carga de Balanzas Contables")
-    st.info(f"Bienvenido {user.email} — Rol: {rol}")
-
-    # --- Subir archivo ---
-    uploaded_file = st.file_uploader("Selecciona tu archivo CSV", type=["csv"])
-    if uploaded_file is not None:
-        st.success(f"Archivo seleccionado: {uploaded_file.name}")
-        df = pd.read_csv(uploaded_file)
-        st.dataframe(df.head())
-
-        if st.button("🚀 Subir archivo y registrar metadata"):
-            periodo = datetime.now().strftime("%Y-%m")
-            filename = f"balanza_{cliente_id}_{periodo}.csv"
-
-            res = supabase.storage.from_("balanzas").upload(filename, uploaded_file.getvalue(), {"content-type": "text/csv"})
-            if res:
-                # Insertar metadata
-                metadata = {
-                    "cliente_id": cliente_id,
-                    "periodo": periodo,
-                    "filename": filename,
-                    "storage_path": filename,
-                    "usuario_carga": user.id,
-                    "fecha_carga": datetime.now().isoformat(),
-                    "entidades_legales": [],
-                    "activo": True
-                }
-                result = supabase.table("balanzas_metadata").insert(metadata).execute()
-                if result.data:
-                    st.success("✅ Archivo subido y metadata registrada correctamente.")
-                    st.write(result.data)
-                else:
-                    st.error("❌ Error al registrar metadata.")
-            else:
-                st.error("❌ Error al subir archivo al bucket.")
+    st.success(f"Sesión iniciada como: {user.email}")
+    st.sidebar.button("Cerrar sesión", on_click=logout)
