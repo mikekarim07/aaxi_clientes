@@ -17,11 +17,12 @@ if not user:
     st.warning("🔒 Por favor inicia sesión desde la página de inicio para continuar.")
 
     if st.button("⬅️ Ir a Inicio"):
-        # Redirigir a Inicio (puede usar switch_page si tu versión de Streamlit lo soporta)
-        st.experimental_set_query_params(page="Inicio")
-        st.experimental_rerun()
-
-    st.stop()  # Detiene la ejecución si no hay sesión activa
+        # Limpiamos la sesión actual y reiniciamos la app
+        st.session_state["user"] = None
+        st.success("Redirigiendo a la página de inicio...")
+        st.stop()
+    
+    
 
 # --- Usuario autenticado ---
 user_email = user["email"]
