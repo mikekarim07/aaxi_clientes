@@ -3,28 +3,33 @@ from supabase import create_client, Client
 from datetime import datetime
 import pandas as pd
 
+# --- Configuración de página ---
+st.set_page_config(page_title="Carga de Archivos", page_icon="📤")
+
 # --- Conexión a Supabase ---
 url = st.secrets["url"]
 key = st.secrets["key"]
 supabase: Client = create_client(url, key)
 
-st.set_page_config(page_title="Carga de Archivos", page_icon="📤")
+# --- Manejo de redirección a Inicio ---
+if st.session_state.get("reload_inicio", False):
+    st.session_state["reload_inicio"] = False
+    st.stop()  # Detiene la ejecución para que Inicio.py se muestre al recargar
 
-# Verificar autenticación segura
+# --- Verificar autenticación ---
 user = st.session_state.get("user", None)
 
 if not user:
     st.warning("🔒 Por favor inicia sesión desde la página de inicio para continuar.")
-    
+
     if st.button("⬅️ Ir a Inicio"):
         st.session_state["user"] = None
-        import streamlit as st
-        st.switch_page("Inicio")  # nombre exacto de tu archivo Inicio.py sin .py
+        st.session_state["reload_inicio"] = True
+        st.experimental_rerun()
 
+    st.stop()
 
-
-
-# Usuario autenticado
+# --- Obtener email del usuario ---
 if hasattr(user, "email"):
     user_email = user.email
 elif isinstance(user, dict):
@@ -35,34 +40,34 @@ else:
 
 st.info(f"Usuario autenticado: {user_email}")
 
+# --- Interfaz de carga ---
 st.title("📤 Carga de Archivos de Balanzas")
 st.write("Sube tu archivo CSV con la balanza consolidada del cliente.")
 
-# --- Selección de año (para carpeta del bucket) ---
+# Selección del año
 año = st.selectbox("Selecciona el año", [2023, 2024, 2025])
 
-# --- Subir archivo ---
+# Subir archivo CSV
 uploaded_file = st.file_uploader("Selecciona el archivo CSV", type=["csv"])
 
 if uploaded_file is not None:
     try:
-        # Leer CSV para validar columnas
+        # Leer CSV
         df = pd.read_csv(uploaded_file)
         expected_columns = [
             "CompanyCode", "Mes", "Año", "NumeroCuenta", "Descripcion",
             "SaldoInicial", "Cargo", "Abono", "SaldoFinal", "FechaData"
         ]
 
-        # Validación de columnas
+        # Validar columnas
         if not all(col in df.columns for col in expected_columns):
             st.error("❌ El archivo no tiene las columnas esperadas.")
         else:
             st.success("✅ Estructura del archivo verificada correctamente.")
             st.dataframe(df.head())
 
-            # Botón para subir el archivo
+            # Botón para guardar archivo
             if st.button("Guardar archivo en Supabase"):
-                # Leer contenido en bytes
                 file_bytes = uploaded_file.getvalue()
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 file_name = f"{user_email}_{timestamp}.csv"
@@ -71,8 +76,8 @@ if uploaded_file is not None:
                 # Subir al bucket 'balanzas'
                 upload_res = supabase.storage.from_("balanzas").upload(storage_path, file_bytes, {"content-type": "text/csv"})
                 if upload_res:
-                    # Insertar metadata en la tabla
-                    fecha_data = df["FechaData"].max()  # Última fecha en el archivo
+                    # Insertar metadata
+                    fecha_data = df["FechaData"].max()
                     supabase.table("balanzas_metadata").insert({
                         "cliente_email": user_email,
                         "file_name": file_name,
